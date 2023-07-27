@@ -1,0 +1,9 @@
+name: LogoAndMotd
+version: '${project.version}'
+main: cn.paper_card.logo_and_motd.LogoAndMotd
+api-version: 1.20
+author: Paper99
+description: PaperCard服务器的Logo设置和Motd设置。
+folia-supported: true
+depend:
+  - PlayerLastQuit
