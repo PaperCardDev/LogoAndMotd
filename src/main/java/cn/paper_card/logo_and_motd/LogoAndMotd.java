@@ -31,6 +31,8 @@ public final class LogoAndMotd extends JavaPlugin {
 
     private final @NotNull McAvatarServerIconService avatarServerIconService;
 
+    private final static @NotNull String PATH_CHECK_POSSIBLE_PLAYER_ENABLE = "check-possible-player.enable";
+
     public LogoAndMotd() {
 
         this.serverIcon = this.loadCustomServerIconFromResource();
@@ -44,7 +46,6 @@ public final class LogoAndMotd extends JavaPlugin {
                         .color(NamedTextColor.AQUA).decorate(TextDecoration.BOLD)),
                 this.createCustomMotd(Component.text("玩Minecraft最好的配置不是多好的电脑而是朋友")
                         .color(NamedTextColor.AQUA).decorate(TextDecoration.BOLD)),
-
         };
 
         this.avatarServerIconService = new McAvatarServerIconService(this);
@@ -93,6 +94,14 @@ public final class LogoAndMotd extends JavaPlugin {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private boolean isCheckPossiblePlayerEnable() {
+        return this.getConfig().getBoolean(PATH_CHECK_POSSIBLE_PLAYER_ENABLE, true);
+    }
+
+    private void setCheckPossiblePlayerEnable(boolean enable) {
+        this.getConfig().set(PATH_CHECK_POSSIBLE_PLAYER_ENABLE, enable);
     }
 
     private boolean checkPossiblePlayer(@NotNull String ip, @NotNull PaperServerListPingEvent event) {
@@ -167,6 +176,8 @@ public final class LogoAndMotd extends JavaPlugin {
     @Override
     public void onEnable() {
         this.getServer().getPluginManager().registerEvents(new OnServerListPing(), this);
+        this.setCheckPossiblePlayerEnable(this.isCheckPossiblePlayerEnable());
+        this.saveConfig();
     }
 
     private class OnServerListPing implements Listener {
@@ -186,7 +197,10 @@ public final class LogoAndMotd extends JavaPlugin {
             final Session session = sessionManager.getSession(ip);
 
             // 根据可能的玩家设置专属的头像和motd
-            if (checkPossiblePlayer(ip, event)) return;
+            if (isCheckPossiblePlayerEnable()) {
+                if (checkPossiblePlayer(ip, event)) return;
+            }
+
 
             // 我们的默认图标
             event.setServerIcon(serverIcon);
