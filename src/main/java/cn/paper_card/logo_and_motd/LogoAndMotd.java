@@ -1,5 +1,6 @@
 package cn.paper_card.logo_and_motd;
 
+import cn.paper_card.disallow_all.DisallowAllApi;
 import cn.paper_card.player_last_quit.PlayerLastQuitApi;
 import com.destroystokyo.paper.event.server.PaperServerListPingEvent;
 import net.kyori.adventure.text.Component;
@@ -31,6 +32,8 @@ public final class LogoAndMotd extends JavaPlugin {
 
     private final @NotNull McAvatarServerIconService avatarServerIconService;
 
+    private DisallowAllApi disallowAllApi = null;
+
     private final static @NotNull String PATH_CHECK_POSSIBLE_PLAYER_ENABLE = "check-possible-player.enable";
 
     public LogoAndMotd() {
@@ -53,7 +56,9 @@ public final class LogoAndMotd extends JavaPlugin {
 
     private @NotNull TextComponent createCustomMotd(@NotNull TextComponent secondLine) {
         return Component.text()
-                .append(Component.text("纸片 PaperCard").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD))
+                .append(Component.text("纸片").color(NamedTextColor.WHITE).decorate(TextDecoration.BOLD).decorate(TextDecoration.ITALIC))
+                .appendSpace()
+                .append(Component.text("PaperCard").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD))
                 .append(Component.text(" | "))
                 .append(Component.text(this.getServer().getMinecraftVersion()).color(NamedTextColor.GOLD).decorate(TextDecoration.BOLD))
                 .append(Component.text(" | "))
@@ -178,12 +183,21 @@ public final class LogoAndMotd extends JavaPlugin {
         this.getServer().getPluginManager().registerEvents(new OnServerListPing(), this);
         this.setCheckPossiblePlayerEnable(this.isCheckPossiblePlayerEnable());
         this.saveConfig();
+
+        final Plugin plugin = this.getServer().getPluginManager().getPlugin("DisallowAll");
+        if (plugin instanceof DisallowAllApi api) {
+            this.disallowAllApi = api;
+        }
     }
 
     private class OnServerListPing implements Listener {
 
         @EventHandler
         public void on(@NotNull PaperServerListPingEvent event) {
+
+            if (disallowAllApi != null) {
+                if (disallowAllApi.onServerListPing(event)) return;
+            }
 
             final String ip = event.getAddress().getHostAddress(); // 源ip地址
 
