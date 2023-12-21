@@ -1,7 +1,8 @@
 package cn.paper_card.logo_and_motd;
 
 import cn.paper_card.disallow_all.DisallowAllApi;
-import cn.paper_card.player_last_quit.PlayerLastQuitApi;
+import cn.paper_card.player_last_quit.api.PlayerLastQuitApi2;
+import cn.paper_card.player_last_quit.api.QuitInfo;
 import com.destroystokyo.paper.event.server.PaperServerListPingEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -33,6 +34,8 @@ public final class LogoAndMotd extends JavaPlugin {
     private final @NotNull McAvatarServerIconService avatarServerIconService;
 
     private DisallowAllApi disallowAllApi = null;
+
+    private PlayerLastQuitApi2 playerLastQuitApi = null;
 
     private final static @NotNull String PATH_CHECK_POSSIBLE_PLAYER_ENABLE = "check-possible-player.enable";
 
@@ -110,40 +113,33 @@ public final class LogoAndMotd extends JavaPlugin {
     }
 
     private boolean checkPossiblePlayer(@NotNull String ip, @NotNull PaperServerListPingEvent event) {
-        final Plugin plugin = getServer().getPluginManager().getPlugin("PlayerLastQuit");
+        final PlayerLastQuitApi2 api = this.playerLastQuitApi;
 
-        if (!(plugin instanceof final PlayerLastQuitApi api)) {
-            getLogger().warning("PlayerLatQuit插件未安装！");
-            return false;
-        }
+        if (api == null) return false;
 
         // 查询该IP可能的玩家
-        final List<PlayerLastQuitApi.Info> players;
 
         // 数据库IO耗时
 
+        final QuitInfo quitInfo;
+
         try {
-            players = api.queryByIp(ip);
+            quitInfo = api.queryByIpLatest(ip);
         } catch (Exception e) {
-            getLogger().severe(e.toString());
-            e.printStackTrace();
+            getSLF4JLogger().error("", e);
             return false;
         }
 
-        final int size = players.size();
-
         // 该IP没有查到玩家
-        if (size == 0) return false;
+        if (quitInfo == null) return false;
 
         // 可能使用的Logo，元素非空
         final ArrayList<CachedServerIcon> icons = new ArrayList<>();
         icons.add(this.serverIcon);
 
         // MC头像
-        for (final PlayerLastQuitApi.Info player : players) {
-            final CachedServerIcon query = this.avatarServerIconService.getFromCache(player.uuid());
-            if (query != null) icons.add(query);
-        }
+        final CachedServerIcon query = this.avatarServerIconService.getFromCache(quitInfo.uuid());
+        if (query != null) icons.add(query);
 
         // 会话
         final Session session = this.sessionManager.getSession(ip);
@@ -159,14 +155,12 @@ public final class LogoAndMotd extends JavaPlugin {
         // motd
         final ArrayList<TextComponent> allMotd = new ArrayList<>(List.of(this.basicMotd));
 
-        for (final PlayerLastQuitApi.Info player : players) {
-            final String name = player.name();
-            allMotd.add(Component.text()
-                    .append(Component.text("这是 ").color(NamedTextColor.AQUA).decorate(TextDecoration.BOLD))
-                    .append(Component.text(name).color(NamedTextColor.RED).decorate(TextDecoration.BOLD))
-                    .append(Component.text(" 的专属服务器呀~").color(NamedTextColor.AQUA).decorate(TextDecoration.BOLD))
-                    .build());
-        }
+        final String name = quitInfo.name();
+        allMotd.add(Component.text()
+                .append(Component.text("这是 ").color(NamedTextColor.AQUA).decorate(TextDecoration.BOLD))
+                .append(Component.text(name).color(NamedTextColor.RED).decorate(TextDecoration.BOLD))
+                .append(Component.text(" 的专属服务器呀~").color(NamedTextColor.AQUA).decorate(TextDecoration.BOLD))
+                .build());
 
         int motdIndex = session.getMotdIndex();
         motdIndex = Math.max(0, motdIndex);
@@ -181,6 +175,7 @@ public final class LogoAndMotd extends JavaPlugin {
     @Override
     public void onEnable() {
         this.getServer().getPluginManager().registerEvents(new OnServerListPing(), this);
+
         this.setCheckPossiblePlayerEnable(this.isCheckPossiblePlayerEnable());
         this.saveConfig();
 
@@ -188,6 +183,12 @@ public final class LogoAndMotd extends JavaPlugin {
         if (plugin instanceof DisallowAllApi api) {
             this.disallowAllApi = api;
         }
+
+        this.playerLastQuitApi = this.getServer().getServicesManager().load(PlayerLastQuitApi2.class);
+        if (this.playerLastQuitApi != null) {
+            this.getSLF4JLogger().info("已连接到" + PlayerLastQuitApi2.class.getSimpleName());
+        }
+
     }
 
     private class OnServerListPing implements Listener {

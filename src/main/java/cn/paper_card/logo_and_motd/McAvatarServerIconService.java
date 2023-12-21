@@ -97,8 +97,7 @@ class McAvatarServerIconService {
                 try {
                     i = this.transform(image);
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    plugin.getLogger().warning("将BufferedImage转为CachedServerIcon时异常：" + e);
+                    plugin.getSLF4JLogger().error("将BufferedImage转为CachedServerIcon时异常：", e);
                     return;
                 }
 
